@@ -73,29 +73,19 @@ public class Body {
 	
 	
 	public JSONObject getState() {
-		//creo que se puede simplificar añadiendo metodos nuevos a body y llamar al metodo
-		//en vez de a un metodo por cada elemento de un array
-		JSONObject o = new JSONObject();
-		JSONArray p = new JSONArray();
-		JSONArray v = new JSONArray();
-		JSONArray f = new JSONArray();
+		JSONObject jo = new JSONObject();
 		
-		p.put(this.p.getX());
-		v.put(this.v.getX());
-		f.put(this.f.getX());
+		jo.put("id", id);
+		jo.put("m" ,  m);
 		
-		p.put(this.p.getY());
-		v.put(this.v.getY());
-		f.put(this.f.getY());
+	
+		jo.put("p", this.p.asJSONArray());
+	
+		jo.put("v", this.v.asJSONArray());
 		
-		o.put("id", id);
-		o.put("m", m);
-		o.put("p", p);
-		//System.out.println("posicion cuerpo " + id + ": " + this.p.getX() + ", " + this.p.getY());
-		o.put("v", v);
-		o.put("f", f);
-		return o;
+		jo.put("f", this.f.asJSONArray());
 		
+		return jo;
 	}
 	
 	public String toString() {
