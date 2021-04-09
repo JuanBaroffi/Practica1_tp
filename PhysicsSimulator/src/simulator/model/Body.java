@@ -50,7 +50,7 @@ public class Body {
 	}
 	
 	void addForce(Vector2D f) {
-		this.f.plus(f);
+		this.f = this.f.plus(f);
 	}
 	
 	void resetForce() {
