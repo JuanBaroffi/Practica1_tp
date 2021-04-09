@@ -1,70 +1,67 @@
 package simulator.model;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class PhysicsSimulator {
+	private ArrayList<Body> bodyList;
+	private double 			actualTime;
+	private double 			dt;
+	private ForceLaws       fl;
 	
-	private List<Body>bs;
-	private double T;
-	private double dt; //tiempo real paso por paso
-	private ForceLaws law;
+	public PhysicsSimulator(ForceLaws fl, double dt) {
+		this.bodyList   = new ArrayList<Body>();
+		this.actualTime = 0.0;
+		this.dt         = dt;
+		this.fl 		= fl;
+	}
 	
-	public PhysicsSimulator(double dt, ForceLaws law){
-		this.dt = dt;
-		T = 0.0;
-		try {
-			this.law = law;
+	public void addBody(Body b) throws IllegalArgumentException {
+		for(Body by: bodyList) {
+			if(by.getID() == b.getID()){
+				throw new IllegalArgumentException();
+			}
 		}
-		catch(IllegalArgumentException e) {
-			System.out.println("Illegal Argument Exception. Try to put a real law in the constructor");
-		}
-		bs = new ArrayList<Body>();
+		this.bodyList.add(b);
+		
 	}
 	
 	public void advance() {
-		for(Body b: bs) {
-			// System.out.println(b.getId());
-		}
-		for(Body b: bs) {
+		// Reseteamos todas las fuerzas de la lista de Body
+		for(Body b: bodyList) {
 			b.resetForce();
-			law.apply(bs);
-			b.move(dt);
-			T += dt;
 		}
-	}
-	
-	public void addBody(Body b) {
-		for(Body a: bs) {
-			//System.out.println(b.getId());
-			//System.out.println(a.getId());
-			if(b.getId().equals(a.getId())) {
-				System.out.println("Dos cuerpos iguales no pueden compartir condiciones iniciales");
-				throw new IllegalArgumentException();
-			}
-				
+		
+		// Llamamos a la función apply
+		this.fl.apply(this.bodyList);
+		
+		// Llamamos al método move de cada Body
+		for(Body b: bodyList) {
+			b.move(this.dt);
 		}
-		bs.add(b);
+		
+		// Incrementamos el tiempo actual
+		this.actualTime += this.dt;
+		
 	}
 	
 	public JSONObject getState() {
-		JSONObject o= new JSONObject();
-		o.put("time", T);
+		JSONObject jo = new JSONObject();
+		JSONArray  ja = new JSONArray();
 		
-		JSONArray b =  new JSONArray();
-		for(Body body: bs) {
-			b.put(body.toString());
+		jo.put("time", this.actualTime);
+		for(Body b: this.bodyList) {
+			ja.put(b.getState());
 		}
 		
-		o.put("bodies", b);
+		return jo.put("bodies", ja);
 		
-		return o;
 	}
 	
 	public String toString() {
 		return getState().toString();
+		
 	}
 }

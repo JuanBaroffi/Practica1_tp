@@ -1,105 +1,103 @@
 package simulator.model;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import simulator.misc.Vector2D;
 
 public class Body {
+	protected String   id;
+	protected Vector2D v;
+	protected Vector2D f;
+	protected Vector2D p;
+	protected Vector2D a;
+	protected double   m;
 	
-	protected String id;
-	protected Vector2D v; //vector velocidad
-	protected Vector2D f; //vector fuerza
-	protected Vector2D p; //vector posicion
-	protected double m;   //masa
-	
-	//protected Vector2D a; //aceleración
 	
 	public Body(String id, Vector2D v, Vector2D p, double m) {
 		this.id = id;
-		this.v = v;
-		this.p = p;
-		//System.out.println("posicion cuerpo " + id + ": " + this.p.getX() + ", " + this.p.getY());
-		f = new Vector2D();
-		this.m = m;
-		//a = new Vector2D();
+		this.v  = v;
+		this.p  = p;
+		this.f  = new Vector2D();
+		this.m  = m;
 	}
 	
-	public String getId() {
-		return id;
+	public String getID() {
+		return this.id;
 	}
 	
 	public Vector2D getVelocity() {
-		return v;
+		return this.v;
 	}
 	
 	public Vector2D getForce() {
-		return f;
+		return this.f;
 	}
 	
-	/*public Vector2D getAceleration() {
-		return a;
-	}*/
-	
-	public Vector2D getPosition() {
-		return p;
+	public Vector2D getPosicion() { 
+		return this.p;
 	}
 	
 	public double getMass() {
-		return m;
+		return this.m;
 	}
 	
-	void addForce(Vector2D f) {
-		this.f.plus(f);
+	
+	
+	public void addForce(Vector2D f) {
+		this.f = this.f.plus(f);
 	}
 	
-	void resetForce() {
-		f = new Vector2D();
+	public void resetForce() {
+		this.f = new Vector2D();
 	}
 	
-	void move(double t) {
-		Vector2D a;
-		//calcular aceleracion
-		if(m ==0) 
-			a = new Vector2D();
-		else 
-			//calcular con segunda ley Newton a = f/m
-			a = f.scale(1/m); //multiplicamos por el inverso de m
-	
-		//movemos
-		p = p.plus(v.scale(t)).plus(a.scale(t*t/2)); //también se puede usar función pow //p = p + v*t + 1/2*a*t^2
-		v = v.plus(a.scale(t)); // v= v + a*t
+	public void resetAcceleration() {
+		this.a = new Vector2D();
 	}
 	
+	public void resetVelocity() {
+		this.v = new Vector2D();
+	}
+	
+	public void move(double t) {
+		Vector2D a1;
+		
+		// calcule of acceleration
+		
+		if(this.m == 0) {
+			this.a = new Vector2D();
+		}else { 
+			this.a = this.f.scale(1/this.m);
+		}
+		
+		// change the position 
+
+		this.p = this.p.plus(this.v.scale(t));
+		a1 	   = this.a.scale(1/2);
+		this.p = this.p.plus(a1.scale(t*t));
+		
+		// change the velocity
+		
+		this.v = this.v.plus(this.a.scale(t));
+	}
 	
 	public JSONObject getState() {
-		//creo que se puede simplificar añadiendo metodos nuevos a body y llamar al metodo
-		//en vez de a un metodo por cada elemento de un array
-		JSONObject o = new JSONObject();
-		JSONArray p = new JSONArray();
-		JSONArray v = new JSONArray();
-		JSONArray f = new JSONArray();
+		JSONObject jo = new JSONObject();
 		
-		p.put(this.p.getX());
-		v.put(this.v.getX());
-		f.put(this.f.getX());
+		jo.put("id", id);
+		jo.put("m" ,  m);
 		
-		p.put(this.p.getY());
-		v.put(this.v.getY());
-		f.put(this.f.getY());
+	
+		jo.put("p", this.p.asJSONArray());
+	
+		jo.put("v", this.v.asJSONArray());
 		
-		o.put("id", id);
-		o.put("m", m);
-		o.put("p", p);
-		//System.out.println("posicion cuerpo " + id + ": " + this.p.getX() + ", " + this.p.getY());
-		o.put("v", v);
-		o.put("f", f);
-		return o;
+		jo.put("f", this.f.asJSONArray());
 		
+		return jo;
 	}
 	
 	public String toString() {
 		return getState().toString();
 	}
-	
 }

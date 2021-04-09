@@ -5,36 +5,35 @@ import java.util.List;
 import simulator.misc.Vector2D;
 
 public class MovingTowardsFixedPoint implements ForceLaws{
-
-	private double g;
+	private double   g;
+	private Vector2D c;
 	
-	public MovingTowardsFixedPoint(){
-		g = 9.81;
+	public MovingTowardsFixedPoint(Vector2D o, double g) {
+		this.g = g;
+		this.c = o;
 	}
 	
 	@Override
 	public void apply(List<Body> bs) {
-		//para cada objeto de la lista, calcular la fuerza total que se aplica a él por el resto
-		//de elementos de la lista
-		for(Body a: bs){
-			Vector2D aceleration;
-			//la direccion se calcula con la posicion del objeto y el punto (0,0)
-			Vector2D direction = new Vector2D(-a.getPosition().getX(), -a.getPosition().getY());
-			aceleration = direction.scale(-g);
-			Vector2D force = new Vector2D();
-			force = aceleration.scale(a.getMass());
-			//actualizamos la fuerza del objeto, que más tarde actualizará su aceleración en move
-			//a.resetForce();
-			a.addForce(force);
-	
-			//con minus
-			/*
-			 * aceleration = new Vector2D()
-			 * aceleration = aceleration.minus(a)
-			 * 
-			 * */
+		Vector2D a;
+		for(Body bi: bs) {
+			
+			// Comprueba si se dirige a 0,0 o a otro punto de centro
+			 
+			if(this.c.getX() == 0 && this.c.getY() == 0) {		// Si se va al centro
+				// F = (-g * v.di) * m
+				a = bi.getPosicion().direction().scale(this.g);			
+				bi.addForce(a.scale(bi.getMass()));
+			}else {												// Si se va a otro punto
+				// F = (-g * (v.c - v.di)) * m
+				a = this.c.minus(bi.getPosicion().direction()).scale(this.g);
+				bi.addForce(a.scale(bi.getMass()));
+			}
 		}
 		
 	}
 
+	public String toString() {
+		return "Moving towards " + this.c + " with constant acceleration " + this.g;
+	}
 }
