@@ -59,7 +59,9 @@ public class Controller{
 				// run the sumulation n steps , etc.
 				p.println(sim.getState());
 				sim.advance();
-				
+				if(i != n-1) {
+					p.print(',');
+				}
 				if(hasOutput) {
 					if(!cmp.equal(jsonOutput.getJSONArray("states").getJSONObject(i), sim.getState())) {
 						System.out.println("mal");
