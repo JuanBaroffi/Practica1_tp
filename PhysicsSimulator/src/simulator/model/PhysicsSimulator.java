@@ -51,17 +51,15 @@ public class PhysicsSimulator {
 	}
 	
 	public JSONObject getState() {
-		JSONObject o= new JSONObject();
-		o.put("time", T);
+		JSONObject jo = new JSONObject();
+		JSONArray  ja = new JSONArray();
 		
-		JSONArray b =  new JSONArray();
-		for(Body body: bs) {
-			b.put(body.toString());
+		jo.put("time", T);
+		for(Body b: bs) {
+			ja.put(b.getState());
 		}
 		
-		o.put("bodies", b);
-		
-		return o;
+		return jo.put("bodies", ja);
 	}
 	
 	public String toString() {
