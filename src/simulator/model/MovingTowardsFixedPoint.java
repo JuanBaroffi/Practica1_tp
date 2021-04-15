@@ -5,8 +5,15 @@ import java.util.List;
 import simulator.misc.Vector2D;
 
 public class MovingTowardsFixedPoint implements ForceLaws{
-	private double   g;
+
+	private double g;
 	private Vector2D c;
+	
+	
+	public MovingTowardsFixedPoint(){
+		g 	   = 9.81;
+		this.c = new Vector2D();
+	}
 	
 	public MovingTowardsFixedPoint(Vector2D o, double g) {
 		this.g = g;
@@ -22,18 +29,19 @@ public class MovingTowardsFixedPoint implements ForceLaws{
 			 
 			if(this.c.getX() == 0 && this.c.getY() == 0) {		// Si se va al centro
 				// F = (-g * v.di) * m
-				a = bi.getPosicion().direction().scale(this.g);			
+				a = bi.getPosition().direction().scale(-this.g);			
 				bi.addForce(a.scale(bi.getMass()));
 			}else {												// Si se va a otro punto
 				// F = (-g * (v.c - v.di)) * m
-				a = this.c.minus(bi.getPosicion().direction()).scale(this.g);
+				a = this.c.minus(bi.getPosition().direction()).scale(-this.g);
 				bi.addForce(a.scale(bi.getMass()));
 			}
 		}
 		
 	}
-
+	
 	public String toString() {
 		return "Moving towards " + this.c + " with constant acceleration " + this.g;
 	}
+
 }

@@ -5,46 +5,67 @@ import java.util.List;
 import simulator.misc.Vector2D;
 
 public class NewtonUniversalGravitation implements ForceLaws {
-	private double g;
-	// arrives the constant gravitation 
-	public NewtonUniversalGravitation(double g) {
+    private double g;
+    // arrives the constant gravitation 
+    
+    public NewtonUniversalGravitation() {
+        this.g = 6.67E-11;
+    }
+    
+    public NewtonUniversalGravitation(double g) {
 		this.g = g;
 	}
-	/*
-	 fi,j= G * mi* mj/ |v.pj − v.pi|^2
-	 1 - Primero se resta pj y pi
-	 2 - Se calcula la magnitud
-	 3 - Se comprueba si es distinto de 0
-	 -- Básicamente hay que hacer distanceTo(Vector2D)
-	 4 - Se eleva al cuadrado
-	 */
-	
-	@Override
-	public void apply(List<Body> bs) {
-		double   fij;
-		Vector2D dij;
-		
-		for(Body bi: bs) {
-			for(Body bj: bs) {
-				
-				if(bi.getID() != bj.getID()) { // Se tendría que usar el comparador | Duda
-					if(bi.getMass() > 0) {
-						fij  = ( (this.g * bi.getMass() * bj.getMass())   / (Math.pow(bj.getPosicion().distanceTo(bi.getPosicion()), 2))  );
-						dij  = bj.getPosicion().minus(bi.getPosicion()).direction();
-						
-						bi.addForce(dij.scale(fij));
-					}else {
-						bi.resetAcceleration();
-						bi.resetVelocity();
-					}
-					
-				}
-			}
-		}
-	}
-	
-	public String toString() {
-		return Double.toString(this.g);
-	}
+    
+    @Override
+    public void apply(List<Body> bs) {
+        double   fij;
+        double 	 mag;
+        Vector2D dij;
+        
+        
+        /*
+             private Vector2D force(Body a, Body b) {
+    Vector2D delta = b.getPosition().minus(a.getPosition());
+    double dist = delta.magnitude();
+    double magnitude = dist>0 ? (_G * a.getMass() * b.getMass()) / (dist * dist) : 0.0;
+    return delta.direction().scale(magnitude);
+   }
+
+
+
+public vector2D getForce(Body b){
+Vector2D f = c.minus(b.getPosition()).direction().scale(g*b.getMass());
+return f;
+}
+         */
+        for(Body bi: bs) {
+            for(Body bj: bs) {
+                
+                if(!bi.getId().equals(bj.getId())) { 
+               
+                	if(bi.getMass() > 0) {
+                		mag  = bj.getPosition().distanceTo(bi.getPosition());
+                        fij  =  mag > 0 ? (this.g * bi.getMass() * bj.getMass())   / (Math.pow(mag, 2)) : 0.0 ;
+                        dij  = bj.getPosition().minus(bi.getPosition());
+                        bi.addForce(dij.direction().scale(fij));
+                		/*
+                		dij  = bj.getPosition().minus(bi.getPosition());
+                		mag = dij.magnitude();
+                        fij  =  mag > 0 ? (this.g * bi.getMass() * bj.getMass())   / (Math.pow(mag, 2)) : 0.0 ;
+                        bi.addForce(dij.direction().scale(fij));
+                       */
+                    }else {
+                        bi.resetAcceleration();
+                        bi.resetVelocity();
+                    }
+                    
+                }
+            }
+        }
+    }
+    
+    public String toString() {
+        return Double.toString(this.g);
+    }
 
 }

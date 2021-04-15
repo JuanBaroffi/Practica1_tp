@@ -1,58 +1,60 @@
 package simulator.model;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import simulator.misc.Vector2D;
+
 public class PhysicsSimulator {
-	private ArrayList<Body> bodyList;
-	private double 			actualTime;
-	private double 			dt;
-	private ForceLaws       fl;
 	
-	public PhysicsSimulator(ForceLaws fl, double dt) {
-		this.bodyList   = new ArrayList<Body>();
-		this.actualTime = 0.0;
-		this.dt         = dt;
-		this.fl 		= fl;
-	}
+	private List<Body>bs;
+	private double T;
+	private double dt; //tiempo real paso por paso
+	private ForceLaws law;
 	
-	public void addBody(Body b) throws IllegalArgumentException {
-		for(Body by: bodyList) {
-			if(by.getID() == b.getID()){
-				throw new IllegalArgumentException();
-			}
+	public PhysicsSimulator(double dt, ForceLaws law){
+		this.dt = dt;
+		T = 0.0;
+		try {
+			this.law = law;
 		}
-		this.bodyList.add(b);
-		
+		catch(IllegalArgumentException e) {
+			System.out.println("Illegal Argument Exception. Try to put a real law in the constructor");
+		}
+		bs = new ArrayList<Body>();
 	}
 	
 	public void advance() {
-		// Reseteamos todas las fuerzas de la lista de Body
-		for(Body b: bodyList) {
+		for(Body b: bs) {
 			b.resetForce();
+			law.apply(bs);
+			b.move(dt);
+			
 		}
-		
-		// Llamamos a la función apply
-		this.fl.apply(this.bodyList);
-		
-		// Llamamos al método move de cada Body
-		for(Body b: bodyList) {
-			b.move(this.dt);
+		T += dt;
+	}
+	
+	public void addBody(Body b) {
+		for(Body a: bs) {
+			if(b.getId().equals(a.getId())) {
+				System.out.println("Dos cuerpos iguales no pueden compartir condiciones iniciales");
+				throw new IllegalArgumentException();
+			}
+				
 		}
-		
-		// Incrementamos el tiempo actual
-		this.actualTime += this.dt;
-		
+		bs.add(b);
 	}
 	
 	public JSONObject getState() {
+		
 		JSONObject jo = new JSONObject();
 		JSONArray  ja = new JSONArray();
 		
-		jo.put("time", this.actualTime);
-		for(Body b: this.bodyList) {
+		jo.put("time", T);
+		for(Body b: bs) {
 			ja.put(b.getState());
 		}
 		
@@ -62,6 +64,5 @@ public class PhysicsSimulator {
 	
 	public String toString() {
 		return getState().toString();
-		
 	}
 }

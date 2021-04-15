@@ -1,5 +1,14 @@
 package simulator.launcher;
 
+import java.awt.Desktop;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -9,10 +18,27 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.json.JSONObject;
 
+import simulator.control.Controller;
+import simulator.control.EpsilonEqualState;
+import simulator.control.MassEqualStates;
+import simulator.control.NotEqualStatesException;
 import simulator.control.StateComparator;
+import simulator.factories.BasicBodyBuilder;
+import simulator.factories.Builder;
+import simulator.factories.BuilderBasedFactory;
+import simulator.factories.EpsilonEqualStatesBuilder;
 import simulator.factories.Factory;
+import simulator.factories.MassEqualStatesBuilder;
+import simulator.factories.MassLosingBodyBuilder;
+import simulator.factories.MovingTowardsFixedPointBuilder;
+import simulator.factories.NewtonUniversalGravitationBuilder;
+import simulator.factories.NoForceBuilder;
 import simulator.model.Body;
 import simulator.model.ForceLaws;
+import simulator.model.MovingTowardsFixedPoint;
+import simulator.model.NewtonUniversalGravitation;
+import simulator.model.NoForce;
+import simulator.model.PhysicsSimulator;
 
 public class Main {
 
@@ -20,14 +46,23 @@ public class Main {
 	//
 	private final static Double _dtimeDefaultValue = 2500.0;
 	private final static String _forceLawsDefaultValue = "nlug";
-	private final static String _stateComparatorDefaultValue = "epseq";
-
+	private final static String _stateComparatorDefaultValue = "epseq"; //lo he tenido que cambiar aquí y en la factoría porque los ejemplos que
+	//nos han dado estaban mal escritos. La forma correcta debería ser "epseq". También cambiado en startBatchMode
+	
+	private final static Integer _nStepsDefaultValue = 150;
+	private final static Integer _epsilonDefaultValue = 1;
+	
 	// some attributes to stores values corresponding to command-line parameters
 	//
 	private static Double _dtime = null;
 	private static String _inFile = null;
 	private static JSONObject _forceLawsInfo = null;
 	private static JSONObject _stateComparatorInfo = null;
+	
+	private static OutputStream _outFile = null;
+	private static Integer _nSteps = null;
+	private static InputStream _expOut = null;
+	private static boolean consola = false;
 
 	// factories
 	private static Factory<Body> _bodyFactory;
@@ -36,10 +71,23 @@ public class Main {
 
 	private static void init() {
 		// TODO initialize the bodies factory
+		ArrayList<Builder<Body>> bodyBuilders = new ArrayList<>();
+		bodyBuilders.add(new BasicBodyBuilder());
+		bodyBuilders.add(new MassLosingBodyBuilder());
+		_bodyFactory = new BuilderBasedFactory<Body>(bodyBuilders);
 
 		// TODO initialize the force laws factory
+		ArrayList<Builder<ForceLaws>> forceLawsBuilders = new ArrayList<>();
+		forceLawsBuilders.add(new MovingTowardsFixedPointBuilder());
+		forceLawsBuilders.add(new NoForceBuilder());
+		forceLawsBuilders.add(new NewtonUniversalGravitationBuilder());
+		_forceLawsFactory = new BuilderBasedFactory<ForceLaws>(forceLawsBuilders);
 
 		// TODO initialize the state comparator
+		ArrayList<Builder<StateComparator>> stateComparatorBuilders = new ArrayList<>();
+		stateComparatorBuilders.add(new MassEqualStatesBuilder());
+		stateComparatorBuilders.add(new EpsilonEqualStatesBuilder());
+		_stateComparatorFactory = new BuilderBasedFactory<StateComparator>(stateComparatorBuilders);
 	}
 
 	private static void parseArgs(String[] args) {
@@ -47,7 +95,7 @@ public class Main {
 		// define the valid command line options
 		//
 		Options cmdLineOptions = buildOptions();
-
+		
 		// parse the command line as provided in args
 		//
 		CommandLineParser parser = new DefaultParser();
@@ -57,7 +105,11 @@ public class Main {
 			parseHelpOption(line, cmdLineOptions);
 			parseInFileOption(line);
 			// TODO add support of -o, -eo, and -s (define corresponding parse methods)
-
+			
+			parseOutFileOption(line);
+			parseExpectedOutputOption(line);
+			parseStepsOptions(line);
+			
 			parseDeltaTimeOption(line);
 			parseForceLawsOption(line);
 			parseStateComparatorOption(line);
@@ -91,7 +143,19 @@ public class Main {
 
 		// TODO add support for -o, -eo, and -s (add corresponding information to
 		// cmdLineOptions)
-
+		
+		// expected output file
+		cmdLineOptions.addOption(Option.builder("eo").longOpt("expected-output").hasArg().desc("The expected Output file. If not provided no comparision is applied").build());
+		
+		// output file
+		cmdLineOptions.addOption(Option.builder("o").longOpt("output"). hasArg().desc("Output file, where output is written. Default value: the standard value").build());
+		
+		// steps
+		cmdLineOptions.addOption(Option.builder("s").longOpt("steps").hasArg().desc("An integer representing the number of simulation steps. Default vaule: 150").build());
+		
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		
 		// delta-time
 		cmdLineOptions.addOption(Option.builder("dt").longOpt("delta-time").hasArg()
 				.desc("A double representing actual time, in seconds, per simulation step. Default value: "
@@ -177,10 +241,10 @@ public class Main {
 
 		// look if the type is supported by the factory
 		boolean found = false;
-		for (JSONObject fe : factory.getInfo()) {
+		for (JSONObject fe : factory.getInfo())  {
 			if (type.equals(fe.getString("type"))) {
 				found = true;
-				break;
+				break; 
 			}
 		}
 
@@ -210,14 +274,102 @@ public class Main {
 			throw new ParseException("Invalid state comparator: " + scmp);
 		}
 	}
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	private static void parseExpectedOutputOption(CommandLine line) throws ParseException{
+		String out = line.getOptionValue("eo");
+		if(out != null) {
+			try {
+				_expOut = new FileInputStream(out);
+			} catch (FileNotFoundException e) {
+				System.out.println("no se ha encontrado el archivo de comparación: " + out);
+			}
+		}
+	}
+	
+	private static void parseOutFileOption(CommandLine line) throws ParseException{
+		String out = line.getOptionValue("o");
+		if(out != null) {
+			try {
+				_outFile = new FileOutputStream(out);
+			} catch (FileNotFoundException e) {
+				System.out.println("no se ha encontrado el archivo de salida: " + out);
+			}
+		}
+		else consola = true;
+	}
+	
+	private static void parseStepsOptions(CommandLine line) throws ParseException{
+		String steps = line.getOptionValue("s", _nStepsDefaultValue.toString());
+		try {
+			_nSteps = Integer.parseInt(steps);
+			assert (_nSteps > 0);
+		} catch (Exception e) {
+			throw new ParseException("Invalid steps value: " + steps);
+		}
+	}
 
+	
 	private static void startBatchMode() throws Exception {
-		// TODO complete this method
+		// todas las comprobaciones de null en principio las ha hecho parseWRTFactory
+		PhysicsSimulator sim= null;
+
+		String fl = _forceLawsInfo.getString("type");
+		switch(fl) {
+		case "mtfp":
+			MovingTowardsFixedPoint m = new MovingTowardsFixedPoint();
+			sim = new PhysicsSimulator(_dtime, m); 
+			break;
+		case "nlug":
+			NewtonUniversalGravitation ng = new NewtonUniversalGravitation();
+			sim = new PhysicsSimulator(_dtime, ng); 
+		break;
+		case "ng":
+			NoForce nf = new NoForce();
+			sim = new PhysicsSimulator(_dtime, nf);
+			break;
+		default:
+			break;
+		}
+
+		Controller c = new Controller(sim, _bodyFactory);
+		//creamos el input stream con el _inFile
+		
+		InputStream in = null;
+		try{
+			in = new FileInputStream(_inFile);
+			//System.out.println(in);
+		}catch(Exception e) {
+			System.out.println("error al cargar el archivo");
+		}
+		c.loadBodies(in);
+		
+		if(_stateComparatorInfo.getString("type").equals("maseq")) {
+			MassEqualStates cmp = new MassEqualStates();
+			c.run(_nSteps, _outFile, _expOut, cmp);
+		}
+	
+		if(_stateComparatorInfo.getString("type").equals("epseq")) {
+			JSONObject o = _stateComparatorInfo.getJSONObject("data");
+			double eps=0;
+			try{
+				eps= o.getDouble("eps");
+			}catch(Exception e) {
+				eps = _epsilonDefaultValue;
+			}
+			EpsilonEqualState cmp = new EpsilonEqualState(eps);
+			try {
+				c.run(_nSteps, _outFile, _expOut, cmp);
+			}
+			catch ( NotEqualStatesException e) {
+				System.out.println(e.getMessage());
+			}
+		}
 	}
 
 	private static void start(String[] args) throws Exception {
 		parseArgs(args);
-		startBatchMode();
+ 		startBatchMode();
 	}
 
 	public static void main(String[] args) {

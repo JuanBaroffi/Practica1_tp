@@ -3,52 +3,37 @@ package simulator.model;
 import simulator.misc.Vector2D;
 
 public class MassLossingBody extends Body {
-	private double lossFactor;
-	private double lossFrequency;
-	private double c;
+ 
+	private double lossFactor;    // número entre 0 y 1 que representa el factor de pérdida de masa
+	private double lossFrequency; // indica el intervalo de tiempo (en segundos) después del cual el objeto pierde masa
+	private double c;             // contador de tiempo
 
-	public MassLossingBody(String id, Vector2D v, Vector2D p, double m, double lFactor, double lFrequency) {
-		super(id,v,p,m);
-		this.lossFactor = lFactor;
-		this.lossFrequency = lFrequency;
-		this.c = 0.0;
+	
+	public MassLossingBody(String id, Vector2D v, Vector2D p, double m, double lossFactor, double lossFrequency) {
+		super(id, v, p, m);
+		this.lossFactor = lossFactor;
+		this.lossFrequency = lossFrequency;
+		c = 0.0;
 	}
-
-	public double getLossFactor() {
-		return this.lossFactor;
-	}
-
-	public double getLossFrequency() {
-		return lossFrequency;
-	}
-
-	public void move(double t) {
-		Vector2D a1;
-		
-		// calcule of acceleration
-		
-		if(m == 0) {
+	
+	void move(double t) {
+		Vector2D a;
+		//calcular aceleracion
+		if(m ==0) 
 			a = new Vector2D();
-		}else { 
-			a = f.scale(1/m);
+		else 
+			//calcular con segunda ley Newton a = f/m
+			a = f.scale(1.0/m); //multiplicamos por el inverso de m
+	
+		//movemos
+		p = p.plus(v.scale(t)).plus(a.scale(t*t/2)); //también se puede usar función pow //p = p + v*t + 1/2*a*t^2
+		v = v.plus(a.scale(t)); // v= v + a*t
+		
+		//comprueba si han pasado lossFrequency segundos desde la última vez que se redujo la masa del objeto
+		if(c >= lossFrequency) {
+			m = m * (1-lossFactor);
+			c = 0.0;
 		}
-		
-		// change the position 
-
-		p = p.plus(v.scale(t));
-		a1 	   = a.scale(1/2);
-		p = p.plus(a1.scale(t*t));
-		
-		// change the velocity
-		
-		v = v.plus(a.scale(t));
-		
-		this.c += t;
-		
-		if(this.c >= this.lossFrequency) {
-			m *= 1 - this.lossFactor;
-			this.c = 0.0;
-		}
+		c += t;
 	}
-
 }
